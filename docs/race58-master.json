@@ -1,0 +1,23 @@
+{
+  "race": 58,
+  "name": "Race58-helikopterinflygning-1080p.mp4",
+  "player": "https://martinalsen.github.io/viewregatta-race58-demo/",
+  "releaseTag": "race58-2026-11-24",
+  "download": "https://github.com/MartinAlsen/viewregatta-race58-demo/releases/download/race58-2026-11-24/Race58-helikopterinflygning-1080p.mp4",
+  "sha256": "85eb7f0e40676c7fe603217142786e480f9763a1fe4e885a9568a85590d38dbc",
+  "bytes": 1610616811,
+  "seconds": 1060.0,
+  "chapters": 17,
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "frameRate": "25/1",
+    "frames": 26500
+  },
+  "audio": {
+    "codec": "aac",
+    "channels": 1,
+    "tracks": 1
+  }
+}
