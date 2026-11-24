@@ -3,7 +3,7 @@ const film=get('film'),free=get('free'),canvas=free.querySelector('canvas'),ctx=
 const hint=get('hint'),seek=get('seek'),focus=get('focus'),take=get('take'),back=get('back');
 const limit=(v,a,b)=>Math.min(b,Math.max(a,v));
 const raceStart=303, frames=[], pointers=new Map();
-let ws=null,active=false,moved=false,id=0,presented=0,displayed=-1,rx=0,ping=0,rtt=.12;
+let ws=null,active=false,moved=false,id=0,anchor=303,presented=0,displayed=-1,rx=0,ping=0,rtt=.12;
 let yaw=0,pitch=0,zoom=1,watchdog,lastSent=0,lastDraw=0,pinch=0,vframe=false;
 film.controls=false;get('transport').hidden=false;
 function mediaClock(_,meta){presented=meta.mediaTime;vframe=true;film.requestVideoFrameCallback(mediaClock);}
@@ -24,7 +24,7 @@ function stop(message='Du följer filmens regi.'){
 function send(){
   if(!active||ws?.readyState!==WebSocket.OPEN||film.seeking)return;
   lastSent=performance.now();
-  ws.send(JSON.stringify({id,t:limit(position(),303,354.96),yaw,pitch,zoom,focus:Number(focus.value),
+  ws.send(JSON.stringify({id,anchor,t:limit(position(),303,354.96),yaw,pitch,zoom,focus:Number(focus.value),
     wide:free.clientWidth>=850,moving:!film.paused&&!film.ended,lead:limit(rtt+.12,.15,1.35)}));
 }
 function adjust(dy,dp,factor=1){
@@ -34,14 +34,14 @@ function adjust(dy,dp,factor=1){
 }
 function enter(){
   take.disabled=true;hint.textContent='Ansluter till filmens 3D-scen …';
-  ws=new WebSocket('wss://eye-intention-refugees-consultants.trycloudflare.com/m1');ws.binaryType='arraybuffer';
+  ws=new WebSocket('wss://will-airports-could-administrator.trycloudflare.com/m1');ws.binaryType='arraybuffer';
   watchdog=setTimeout(()=>stop('Kunde inte ansluta till 3D-scenen. Filmen går att spela. Försök igen.'),12000);
   ws.onerror=ws.onclose=()=>stop('Kontakten med 3D-scenen bröts. Du följer nu filmens regi.');
   ws.onmessage=async({data})=>{
     if(typeof data==='string'){
       const packet=JSON.parse(data);
       if(packet.ready){
-        clearTimeout(watchdog);rx=performance.now();active=true;moved=false;yaw=pitch=0;zoom=1;focus.value='0';
+        clearTimeout(watchdog);rx=performance.now();active=true;moved=false;yaw=pitch=0;zoom=1;focus.value='0';anchor=limit(Math.round(position()*25)/25,303,354.96);
         invalidate();controls(true);free.focus({preventScroll:true});hint.textContent='Dra för att vrida. Nyp eller scrolla för att zooma.';send();
         ping=performance.now();ws.send('{"ping":true}');
       }else if(packet.pong)rtt=limit((performance.now()-ping)/1000,.01,1);
@@ -49,7 +49,7 @@ function enter(){
     }
     const h=new DataView(data),version=h.getUint32(0),t=h.getUint32(4)/25;
     rx=performance.now();
-    if(version!==id||!active||!moved)return;
+    if(version!==id||!active||(!moved&&Math.abs(t-anchor)<.025))return;
     const blob=new Blob([data.slice(12)],{type:'image/jpeg'});
     let bitmap;
     try{
@@ -68,7 +68,7 @@ function tick(now){
   if(active){
     if(now-lastSent>370)send();
     if(now-rx>8000){stop('3D-bilden svarar inte. Du följer nu filmens regi.');}
-    else if(moved&&!film.seeking){
+    else if((moved||Math.abs(t-anchor)>.025)&&!film.seeking){
       // Both the audio clock and the displayed movie frame come from this one video.
       let next;while(frames.length&&frames[0].t<=t+.021){next?.bitmap.close?.();next=frames.shift();}
       if(next){
