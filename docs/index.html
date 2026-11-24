@@ -11,11 +11,14 @@ p{margin:0 0 1em;color:#bfd3dc}video{display:block;width:100%;aspect-ratio:16/9;
 <main>
 <h1>Race 58 · USA 2 vs New Zealand</h1>
 <p>2026 Team Racing World Championship · Stockholm · English commentary</p>
-<video controls playsinline preload="metadata" poster="stockholm.jpg" aria-label="Race 58, full race with English commentary" src="https://github.com/MartinAlsen/viewregatta-race58-demo/releases/download/race58-2026-11-24/Race58-helikopterinflygning-1080p.mp4"></video>
+<video controls playsinline preload="metadata" poster="stockholm.jpg" aria-label="Race 58, full race with English commentary">
+<source src="watch/race58.m3u8" type="application/vnd.apple.mpegurl">
+<source src="https://github.com/MartinAlsen/viewregatta-race58-demo/releases/download/race58-2026-11-24/Race58-helikopterinflygning-1080p.mp4" type="video/mp4">
+</video>
 <nav aria-label="Jump to a chapter">
 <a href="#t=0">Intro</a><a href="#t=101">Pre-start</a><a href="#t=180">Start</a><a href="#t=319">First mark</a><a href="#t=494">M3 to M4</a><a href="#t=806">Final run</a><a href="#t=1008.4">Finish</a>
 </nav>
-<footer><a href="https://github.com/MartinAlsen/viewregatta-race58-demo/releases/download/race58-2026-11-24/Race58-helikopterinflygning-1080p.mp4">Download the full film</a> <small>· 1080p · 17:40 · 1.6 GB</small></footer>
+<footer><a href="watch/race58-mobile.mp4">Play mobile MP4</a> · <a href="https://github.com/MartinAlsen/viewregatta-race58-demo/releases/download/race58-2026-11-24/Race58-helikopterinflygning-1080p.mp4">Download the full film</a> <small>· 1080p · 17:40 · 1.6 GB</small></footer>
 </main>
 <script>
 const film=document.querySelector('video');
