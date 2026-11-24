@@ -18,7 +18,7 @@ function stop(message='Du följer filmens regi.'){
   take.disabled=false;world?.follow();pointers.clear();hint.textContent=message;
 }
 function load(){
-  return loading??=import('./runtime/world.js?v=11529226c088').then(m=>m.loadWorld(canvas,()=>{
+  return loading??=import('./runtime/world.js?v=968d80c353a2').then(m=>m.loadWorld(canvas,()=>{
     stop('Telefonen avbröt 3D-visningen. Filmen fortsätter.');world=null;loading=null;
   })).then(w=>{world=w;warmAt=performance.now();}).catch(e=>{loading=null;throw e;});
 }
