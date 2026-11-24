@@ -1,0 +1,47 @@
+{
+  "schema": "viewregatta/boat-geometry-contract/2",
+  "revision": "j80-mast-tracker-physical-v2",
+  "reference": "official_j80_dimensions_trwc_mast_tracker_survey_and_planform_validation",
+  "modelAsset": "j80.obj",
+  "boatLengthM": 8.0,
+  "physicalBeamM": 2.51,
+  "forwardFromTrackerM": 3.05,
+  "transomFromTrackerM": 4.95,
+  "aftermostFromTrackerM": 5.29,
+  "halfBeamM": 1.255,
+  "rudderChordM": 0.34,
+  "planHalfBeamStationsM": [
+    [0.0, 0.0],
+    [0.5, 0.2531],
+    [1.0, 0.4611],
+    [1.5, 0.6195],
+    [2.0, 0.7779],
+    [2.5, 0.9277],
+    [3.0, 1.0318],
+    [3.5, 1.1360],
+    [4.0, 1.2004],
+    [4.5, 1.2304],
+    [4.911, 1.2550],
+    [5.0, 1.2474],
+    [5.5, 1.2045],
+    [6.0, 1.1569],
+    [6.5, 1.0692],
+    [7.0, 0.9798],
+    [7.5, 0.8523],
+    [8.0, 0.7035]
+  ],
+  "measurementMethod": "Official 8.00 m LOA and 2.51 m beam; TRWC phone/mast survey 3.05 m aft of bow and 4.95 m forward of transom; 0.34 m class rudder chord; source hull-shell planform normalized to the official dimensions and visually checked against the official J/80 plan view.",
+  "positionPolicy": {
+    "origin": "phone_at_mast",
+    "relative": "preserve_simultaneous_boat_differences_without_treating_absolute_accuracy_radii_as_independent",
+    "absolute": "keep_boat_fleet_to_course_bias_separate_until_empirically_calibrated"
+  },
+  "sourceAssetCalibration": {
+    "centerlineX": -0.0000005,
+    "hullBowZ": 3.2753,
+    "mastLuffZ": 1.27946,
+    "hullTransomZ": -2.91019,
+    "rudderTrailingEdgeZ": -3.2355,
+    "hullBeamM": 1.936499
+  }
+}

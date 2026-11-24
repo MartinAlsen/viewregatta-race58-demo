@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- ViewRegatta mark: port (red) + starboard (green) sails, with a dark keyline
+       (contour) so it stays legible over video / light / dark backgrounds.
+
+       THE canonical copy. Everything that draws the mark reads this file:
+       the broadcast and every other web surface via <img>, the QR label sheet via
+       `v3/registration/make_qr_pdf.py`, the marketing site via `website/assets/`.
+       Do not redraw it inline — see brand/README.md. -->
+  <g stroke="#15314a" stroke-width="5" stroke-linejoin="round">
+    <path d="M96,30 L96,152 L33,152 C57,119 78,73 96,30 Z" fill="#e51f1f"/>
+    <path d="M104,30 L104,152 L167,152 C143,119 122,73 104,30 Z" fill="#13a83c"/>
+  </g>
+</svg>

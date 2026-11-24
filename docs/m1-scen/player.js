@@ -1,91 +1,68 @@
 const get=id=>document.getElementById(id);
-const film=get('film'),free=get('free'),canvas=free.querySelector('canvas'),ctx=canvas.getContext('2d');
-const hint=get('hint'),seek=get('seek'),focus=get('focus'),take=get('take'),back=get('back');
-const limit=(v,a,b)=>Math.min(b,Math.max(a,v));
-const raceStart=303, frames=[], pointers=new Map();
-let ws=null,active=false,moved=false,id=0,anchor=303,presented=0,displayed=-1,rx=0,ping=0,rtt=.12;
-let yaw=0,pitch=0,zoom=1,watchdog,lastSent=0,lastDraw=0,pinch=0,vframe=false;
+const film=get('film'),free=get('free'),canvas=free.querySelector('canvas'),back=get('back'),take=get('take');
+const focus=get('focus'),hint=get('hint'),seek=get('seek'),pointers=new Map(),limit=(x,a,b)=>Math.max(a,Math.min(b,x));
+let world,loading,active=false,requested=false,ready=false,visible=false,moved=false,anchor=0,elapsed=0,frames=0,previous=0,pinch=0;
+let yaw=0,pitch=0,zoom=1,stamp=0,hasStamp=false,seq=0,lastWarm=0,warmAt=0;
+function clock(_,m){stamp=m.mediaTime;hasStamp=true;film.requestVideoFrameCallback(clock);}
+if(film.requestVideoFrameCallback)film.requestVideoFrameCallback(clock);
+const position=()=>hasStamp&&!film.seeking?stamp:film.currentTime;
+const pose=()=>({yaw,pitch,zoom,focus:Number(focus.value)});
 film.controls=false;get('transport').hidden=false;
-function mediaClock(_,meta){presented=meta.mediaTime;vframe=true;film.requestVideoFrameCallback(mediaClock);}
-if(film.requestVideoFrameCallback)film.requestVideoFrameCallback(mediaClock);
-function position(){return raceStart+(vframe&&!film.seeking?presented:film.currentTime);}
-function clearFrames(){for(const item of frames)item.bitmap.close?.();frames.length=0;displayed=-1;canvas.hidden=true;}
-function invalidate(){id++;clearFrames();}
-function controls(enabled){
-  take.hidden=enabled;
-  for(const el of [free,back,get('focusLabel'),get('closer'),get('wider')])el.hidden=!enabled;
+function evidence(text){if(get('credits').textContent!==text)get('credits').textContent=text;}
+function controls(on){
+  take.hidden=on;free.hidden=!on;
+  for(const el of [back,get('focusLabel'),get('closer'),get('wider')])el.hidden=!on;
 }
 function stop(message='Du följer filmens regi.'){
-  active=false;controls(false);take.disabled=false;invalidate();pointers.clear();
-  clearTimeout(watchdog);
-  if(ws){const old=ws;ws=null;old.onclose=old.onerror=null;old.close();}
-  hint.textContent=message;
+  requested=active=visible=false;seq++;controls(false);canvas.hidden=true;get('credits').hidden=true;get('room').hidden=true;get('rate').hidden=true;
+  take.disabled=false;world?.follow();pointers.clear();hint.textContent=message;
 }
-function send(){
-  if(!active||ws?.readyState!==WebSocket.OPEN||film.seeking)return;
-  lastSent=performance.now();
-  ws.send(JSON.stringify({id,anchor,t:limit(position(),303,354.96),yaw,pitch,zoom,focus:Number(focus.value),
-    wide:free.clientWidth>=850,moving:!film.paused&&!film.ended,lead:limit(rtt+.12,.15,1.35)}));
+function load(){
+  return loading??=import('./runtime/world.js').then(m=>m.loadWorld(canvas,()=>{
+    stop('Telefonen avbröt 3D-visningen. Filmen fortsätter.');world=null;loading=null;
+  })).then(w=>{world=w;warmAt=performance.now();}).catch(e=>{loading=null;throw e;});
 }
-function adjust(dy,dp,factor=1){
-  if(!active)return;
-  yaw=((yaw+dy+3*Math.PI)%(2*Math.PI))-Math.PI;pitch=limit(pitch+dp,-1.4,.48);zoom=limit(zoom*factor,.19,2.9);
-  moved=true;send();
+function takeOver(){
+  requested=false;active=true;ready=true;anchor=position();yaw=pitch=0;zoom=1;moved=false;focus.value='0';world.start(anchor);
+  elapsed=frames=previous=0;controls(true);take.disabled=false;free.focus({preventScroll:true});
+  hint.textContent='Dra för att vrida. Nyp eller scrolla för att zooma.';
 }
-function enter(){
-  take.disabled=true;hint.textContent='Ansluter till filmens 3D-scen …';
-  ws=new WebSocket('wss://will-airports-could-administrator.trycloudflare.com/m1');ws.binaryType='arraybuffer';
-  watchdog=setTimeout(()=>stop('Kunde inte ansluta till 3D-scenen. Filmen går att spela. Försök igen.'),12000);
-  ws.onerror=ws.onclose=()=>stop('Kontakten med 3D-scenen bröts. Du följer nu filmens regi.');
-  ws.onmessage=async({data})=>{
-    if(typeof data==='string'){
-      const packet=JSON.parse(data);
-      if(packet.ready){
-        clearTimeout(watchdog);rx=performance.now();active=true;moved=false;yaw=pitch=0;zoom=1;focus.value='0';anchor=limit(Math.round(position()*25)/25,303,354.96);
-        invalidate();controls(true);free.focus({preventScroll:true});hint.textContent='Dra för att vrida. Nyp eller scrolla för att zooma.';send();
-        ping=performance.now();ws.send('{"ping":true}');
-      }else if(packet.pong)rtt=limit((performance.now()-ping)/1000,.01,1);
-      return;
-    }
-    const h=new DataView(data),version=h.getUint32(0),t=h.getUint32(4)/25;
-    rx=performance.now();
-    if(version!==id||!active||(!moved&&Math.abs(t-anchor)<.025))return;
-    const blob=new Blob([data.slice(12)],{type:'image/jpeg'});
-    let bitmap;
-    try{
-      if(typeof createImageBitmap==='function')bitmap=await createImageBitmap(blob);
-      else{const url=URL.createObjectURL(blob);try{bitmap=new Image();bitmap.src=url;await bitmap.decode();}finally{URL.revokeObjectURL(url);}}
-    }catch{return;}
-    if(version!==id||!active||t<displayed){bitmap.close?.();return;}
-    frames.push({t,bitmap});frames.sort((a,b)=>a.t-b.t);
-    while(frames.length>45)frames.shift().bitmap.close?.();
-  };
+async function enter(){
+  const version=++seq;requested=true;take.disabled=true;hint.textContent='Laddar båtarna och Stockholm …';
+  try{await load();if(version===seq&&world.ready)takeOver();}catch(e){console.error(e.message,e.stack);if(version===seq)stop('3D-scenen kunde inte laddas. Filmen går att spela.');}
+}
+function adjust(dx,dy,factor=1){
+  if(!active)return;yaw=(yaw+dx+3*Math.PI)%(2*Math.PI)-Math.PI;pitch=limit(pitch+dy,-1.4,.48);zoom=limit(zoom*factor,.19,2.9);moved=true;
 }
 function tick(now){
-  const t=position();seek.value=film.currentTime;
-  const s=Math.floor(raceStart+film.currentTime);get('time').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  requestAnimationFrame(tick);if(document.hidden)return;
+  const t=position(),sec=Math.floor(303+film.currentTime);seek.value=film.currentTime;
+  get('time').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
   get('play').textContent=film.ended?'Spela igen':film.paused?'Spela':'Pausa';
-  if(active){
-    if(now-lastSent>370)send();
-    if(now-rx>8000){stop('3D-bilden svarar inte. Du följer nu filmens regi.');}
-    else if((moved||Math.abs(t-anchor)>.025)&&!film.seeking){
-      // Both the audio clock and the displayed movie frame come from this one video.
-      let next;while(frames.length&&frames[0].t<=t+.021){next?.bitmap.close?.();next=frames.shift();}
-      if(next){
-        if(Math.abs(t-next.t)<.24&&next.t>=displayed){if(canvas.width!==next.bitmap.width){canvas.width=next.bitmap.width;canvas.height=next.bitmap.height;}ctx.drawImage(next.bitmap,0,0);canvas.hidden=false;displayed=next.t;lastDraw=now;}
-        next.bitmap.close?.();
-      }
-      if(!film.paused&&now-lastDraw>700)canvas.hidden=true;
+  if(!world || (!active&&(ready||now-lastWarm<22)))return;
+  try{
+    const result=world.draw(active?t:12,active?pose():{yaw:0,pitch:0,zoom:1,focus:0},now,active);lastWarm=now;
+    if(!active){ready=result.ready;if(ready&&requested)takeOver();else if(requested&&now-warmAt>75000){stop('Stockholmsbilden tar för lång tid att ladda. Försök igen.');warmAt=now;}return;}
+    visible=moved||Math.abs(t-anchor)>.035;canvas.hidden=!visible;
+    get('credits').hidden=!visible;get('room').hidden=!visible||!result.room;
+    evidence([...new Set(['Google Maps',...result.credits.filter(x=>x!=='Google')])].join(' · '));
+    if(visible){
+      if(previous>0){elapsed+=now-previous;frames++;}
+      previous=now;
+      if(elapsed>=1500){get('rate').hidden=false;get('rate').textContent=Math.round(1000*frames/elapsed)+' bilder/s';elapsed=frames=0;}
     }
-  }
-  requestAnimationFrame(tick);
+  }catch(e){console.error(e.message,e.stack);stop('3D-vyn avbröts. Du följer filmens regi.');world=null;loading=null;}
 }
 take.onclick=enter;back.onclick=()=>{stop();take.focus({preventScroll:true});};
-focus.onchange=()=>{moved=true;send();};
+focus.onchange=()=>{moved=true;};
 function play(){if(film.paused)film.play().catch(()=>{hint.textContent='Tryck på Spela för att starta.';});else film.pause();}
 get('play').onclick=film.onclick=play;seek.oninput=()=>{film.currentTime=Number(seek.value);};
-for(const e of ['seeking','seeked','play','pause'])film.addEventListener(e,()=>{if(active){invalidate();if(!film.seeking){if(film.paused)presented=film.currentTime;send();}}});
+film.addEventListener('seeked',()=>{if(film.paused)stamp=film.currentTime;});
 film.addEventListener('ended',()=>{if(active)stop('Rundningen är slut. Du kan spela igen.');});
+function prewarm(){if(!document.hidden&&!navigator.connection?.saveData)load().catch(()=>{});}
+film.addEventListener('loadedmetadata',prewarm,{once:true});
+film.addEventListener('playing',prewarm,{once:true});
+if(film.readyState>=1)prewarm();
 const dist=()=>{const a=[...pointers.values()];return a.length===2?Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y):0;};
 free.onpointerdown=e=>{free.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});pinch=dist();};
 free.onpointermove=e=>{

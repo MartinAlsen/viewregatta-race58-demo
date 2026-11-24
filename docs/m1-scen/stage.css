@@ -1,4 +1,10 @@
 #free{background:transparent;touch-action:none;cursor:grab}
 #free:active{cursor:grabbing}
-#free canvas{height:88.888889%;pointer-events:none;clip-path:polygon(0 0,100% 0,100% 100%,0 100%,0 0,79.479167% 1.875%,79.479167% 33.541667%,99.0625% 33.541667%,99.0625% 1.875%,79.479167% 1.875%,0 0)}
+#free canvas{height:100%;pointer-events:none;clip-path:polygon(0 0,100% 0,100% 88.888889%,0 88.888889%,0 0,79.479167% 1.666667%,79.479167% 29.814815%,99.0625% 29.814815%,99.0625% 1.666667%,79.479167% 1.666667%,0 0)}
 #free:focus-visible{outline:2px solid #a4e2df;outline-offset:-2px}
+
+#credits{position:absolute;bottom:11.2%;left:.6%;font:clamp(8px,.9vw,12px) system-ui;color:white;text-shadow:0 0 3px black;pointer-events:none}
+#room{position:absolute;top:84%;left:45%;padding:.3% .6%;background:#141f26;color:#65dff4;font:bold clamp(9px,1.3vw,20px) system-ui;pointer-events:none}
+#rate{font: .85rem system-ui;color:#bbd1d9;font-variant-numeric:tabular-nums}
+#free[hidden]{display:block!important;visibility:hidden;pointer-events:none}
+#free canvas[hidden]{display:block!important;opacity:0}
