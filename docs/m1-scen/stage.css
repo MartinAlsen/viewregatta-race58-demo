@@ -1,0 +1,4 @@
+#free{background:transparent;touch-action:none;cursor:grab}
+#free:active{cursor:grabbing}
+#free canvas{height:88.888889%;pointer-events:none;clip-path:polygon(0 0,100% 0,100% 100%,0 100%,0 0,79.479167% 1.875%,79.479167% 33.541667%,99.0625% 33.541667%,99.0625% 1.875%,79.479167% 1.875%,0 0)}
+#free:focus-visible{outline:2px solid #a4e2df;outline-offset:-2px}

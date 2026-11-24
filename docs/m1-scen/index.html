@@ -1,0 +1,12 @@
+<!doctype html><html lang="sv"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#091b26"><title>Ta över vid M1 · Race 58 · ViewRegatta</title>
+<link rel="icon" href="data:,"><link rel="stylesheet" href="../m1/player.css"><link rel="stylesheet" href="stage.css">
+<main><header><a href="../">← Hela Race 58</a><h1>Ta över kameran vid M1</h1><p>USA mot Nya Zeeland · Filmens 05:03–05:55</p></header>
+<section id="player" aria-label="Race 58 vid första märket"><div id="stage"><video id="film" src="programme.mp4" poster="poster.jpg" controls preload="metadata" playsinline></video>
+<div id="free" hidden tabindex="0" aria-label="Fri kamera. Dra för att vrida och nyp för att zooma. Piltangenter vrider kameran."><canvas width="1024" height="512" hidden></canvas></div></div>
+<div id="transport" hidden><button id="play">Spela</button><label class="sr" for="seek">Speltid</label><input id="seek" type="range" min="0" max="52" step=".04" value="0"><output id="time">05:03</output></div>
+<div class="modes"><button id="take">Ta över kameran</button><button id="back" hidden>Till filmens regi</button>
+<label id="focusLabel" hidden>Följ <select id="focus"><option value="0">Regins blickpunkt</option><option value="5">M1</option><option value="1">USA 1</option><option value="2">USA 2</option><option value="3">NZL 3</option><option value="4">NZL 4</option></select></label>
+<button id="closer" hidden aria-label="Zooma in">+</button><button id="wider" hidden aria-label="Zooma ut">−</button></div>
+<p id="hint" role="status">Spela upp rundningen eller pausa på den bild där du vill ta över.</p></section></main>
+<script type="module" src="player.js"></script><script src="../playback.js"></script></html>
