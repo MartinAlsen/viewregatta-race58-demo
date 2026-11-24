@@ -8,3 +8,28 @@
 #rate{font: .85rem system-ui;color:#bbd1d9;font-variant-numeric:tabular-nums}
 #free[hidden]{display:block!important;visibility:hidden;pointer-events:none}
 #free canvas[hidden]{display:block!important;opacity:0}
+
+#free canvas{filter:url(#film-transfer)}
+#credits{font-family:"ViewRegatta V2 Roboto",Arial,sans-serif;font-size:clamp(6px,.64vw,11px)}
+#room{font-family:"ViewRegatta V2 Roboto",Arial,sans-serif}
+#controls{width:100%}
+#controls .modes{align-items:center}
+#cameraOptions{margin-top:6px}
+#stage video{object-fit:contain}
+#player.expanded,#player:fullscreen{position:fixed;inset:0;z-index:20;width:100%;height:100dvh;max-width:none;margin:0;display:grid;place-items:center;background:#050b10}
+#player.expanded #stage,#player:fullscreen #stage{width:min(100%,calc(100dvh * 16 / 9));height:auto;max-height:100dvh;border-radius:0;margin:0}
+#player.expanded #controls,#player:fullscreen #controls{position:absolute;z-index:3;bottom:0;left:0;right:0;background:rgb(5 15 24 / 92%);padding:5px max(8px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+#player.expanded.hud-hidden #controls{visibility:hidden;pointer-events:none}
+#player.expanded #hint{display:none}
+body:has(#player.expanded){overflow:hidden}
+@media(max-width:740px),(orientation:landscape) and (max-height:540px){
+ main{padding:0}header{padding:8px 12px;margin:0}header h1{font-size:1.15rem;margin:4px 0}header p{font-size:.84rem}
+ #player{max-width:none}#stage{width:100%;margin:0;border-radius:0}
+ #controls{padding:4px 8px}#controls .modes,#controls #transport{display:flex;gap:6px;margin:0;align-items:center}
+ #controls #transport{width:100%}#controls button,#controls select{font-size:.875rem;min-height:42px;padding:5px 10px}
+ #hint{margin:4px 0;font-size:.8rem}#play{min-width:60px}#rate{font-size:.75rem}
+}
+@media(orientation:landscape) and (max-height:540px){
+ #player.expanded #controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+ #player.expanded #transport{flex:1;min-width:180px}#controls #cameraOptions{flex-basis:100%}
+}
