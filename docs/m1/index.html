@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="sv">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#091b26"><title>Race 58 · Rundningen vid M1 · ViewRegatta</title>
+<link rel="icon" href="data:,"><link rel="stylesheet" href="player.css">
+<main>
+<header><a href="../">← Hela Race 58</a><h1>Rundningen vid M1</h1><p>Race 58 · USA 2 och Nya Zeeland · Filmens 04:50–05:55</p></header>
+<section id="player" aria-label="Interaktivt prov vid första märket">
+<div id="stage"><video id="film" playsinline controls preload="metadata" src="programme.mp4" poster="poster.jpg" aria-label="Regisserad bild med engelsk kommentering"></video>
+<div id="free" hidden></div><small id="credit" hidden>Stadskarta © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMaps bidragsgivare</a></small></div>
+<div id="transport" hidden><button id="play" type="button">Spela</button><label class="sr" for="seek">Speltid i avsnittet</label><input id="seek" type="range" min="0" max="65" step=".04" value="0"><output id="time">04:50</output></div>
+<div class="modes"><button type="button" id="take">Ta över kameran</button><button type="button" id="back" hidden>Till filmens regi</button>
+<label id="focusLabel" hidden>Följ <select id="focus"><option value="fleet">Fältet</option><option value="mark">M1</option><option value="0">USA 1</option><option value="1">USA 2</option><option value="2">NZL 3</option><option value="3">NZL 4</option></select></label></div>
+<p id="hint" role="status">Spela upp avsnittet och ta över kameran när du vill.</p>
+</section></main><script type="module" src="player.js"></script>
+</html>
