@@ -5,7 +5,8 @@ let world,loading,active=false,requested=false,ready=false,visible=false,moved=f
 let yaw=0,pitch=0,zoom=1,stamp=0,hasStamp=false,seq=0,lastWarm=0,warmAt=0;
 function clock(_,m){stamp=m.mediaTime;hasStamp=true;film.requestVideoFrameCallback(clock);}
 if(film.requestVideoFrameCallback)film.requestVideoFrameCallback(clock);
-const position=()=>hasStamp&&!film.seeking?stamp:film.currentTime;
+film.addEventListener('seeking',()=>{hasStamp=false;});
+const position=()=>hasStamp&&!film.seeking&&Math.abs(stamp-film.currentTime)<.12?stamp:film.currentTime;
 const pose=()=>({yaw,pitch,zoom,moved,focus:Number(focus.value)});
 film.controls=false;get('transport').hidden=false;
 function evidence(text){if(get('credits').textContent!==text)get('credits').textContent=text;}
@@ -17,10 +18,35 @@ function stop(message='Du följer filmens regi.'){
   requested=active=visible=false;seq++;controls(false);canvas.hidden=true;get('credits').hidden=true;get('room').hidden=true;get('rate').hidden=true;
   take.disabled=false;world?.follow();pointers.clear();hint.textContent=message;
 }
+const programmeUrl=new URL(document.querySelector('main').dataset.programme,document.baseURI);
+let clockStart=Number(document.querySelector('main').dataset.start);
+const maskRects=JSON.parse(document.querySelector('main').dataset.insets);
+let previousMask=-1;
+function applyInsets(mask){
+  if(mask===previousMask)return;
+  previousMask=mask;
+  const polygon=['0 0','100% 0','100% 88.888889%','0 88.888889%','0 0'];
+  for(const [bit,x,y,w,h] of maskRects){
+    if(!(mask&bit))continue;
+    const point=(a,b)=>a/19.2+'% '+b/10.8+'%';
+    polygon.push(point(x,y),point(x,y+h),point(x+w,y+h),point(x+w,y),point(x,y),'0 0');
+  }
+  canvas.style.clipPath='polygon(evenodd,'+polygon.join(',')+')';
+}
+film.addEventListener('loadedmetadata',()=>{if(Number.isFinite(film.duration))seek.max=film.duration;});
+if(film.dataset.hls&&film.canPlayType('application/vnd.apple.mpegurl'))film.src=film.dataset.hls;
+if(film.dataset.fallback)film.addEventListener('error',()=>{
+  const fallback=new URL(film.dataset.fallback,document.baseURI).href;
+  if(film.src!==fallback)film.src=fallback;
+});
 function load(){
-  return loading??=import('./runtime/world.js?v=533a63d96a8e').then(m=>m.loadWorld(canvas,()=>{
+  return loading??=import('./runtime/world.js?v=34638303f0af').then(m=>m.loadWorld(canvas,()=>{
     stop('Telefonen avbröt 3D-visningen. Filmen fortsätter.');world=null;loading=null;
-  })).then(w=>{world=w;warmAt=performance.now();}).catch(e=>{loading=null;throw e;});
+  },programmeUrl)).then(w=>{world=w;
+    const targetLabel=focus.options[1]?.textContent||'Aktuellt banmärke';
+    focus.replaceChildren(new Option('Regins blickpunkt','0'),new Option(targetLabel,String(w.boats.length+1)),
+      ...w.boats.map((boat,i)=>new Option(boat.label,String(i+1))));
+    warmAt=performance.now();}).catch(e=>{loading=null;throw e;});
 }
 function takeOver(){
   requested=false;active=true;ready=true;anchor=position();yaw=pitch=0;zoom=1;moved=false;focus.value='0';world.start(anchor);
@@ -36,14 +62,15 @@ function adjust(dx,dy,factor=1){
 }
 function tick(now){
   requestAnimationFrame(tick);if(document.hidden)return;
-  const t=position(),sec=Math.floor(303+film.currentTime);seek.value=film.currentTime;
+  const t=position(),sec=Math.floor(clockStart+film.currentTime);seek.value=film.currentTime;
   get('time').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
   get('play').textContent=film.ended?'Spela igen':film.paused?'Spela':'Pausa';
   if(!world || (!active&&now-lastWarm<(ready?200:22)))return;
   if(!active&&!requested&&ready&&film.paused&&now-warmAt>45000)return;
   try{
     const result=world.draw(t,active?pose():{yaw:0,pitch:0,zoom:1,focus:0},now,active);lastWarm=now;
-    if(!active){ready=result.ready;if(ready&&requested)takeOver();else if(requested&&now-warmAt>75000){stop('Stockholmsbilden tar för lång tid att ladda. Försök igen.');warmAt=now;}return;}
+    applyInsets(result.mask);
+    if(!active){ready=result.ready;if(ready&&requested)takeOver();else if(requested&&now-warmAt>75000){stop('3D-miljön tar för lång tid att ladda. Försök igen.');warmAt=now;}return;}
     visible=moved||Math.abs(t-anchor)>.035;canvas.hidden=!visible;
     get('credits').hidden=!visible;get('room').hidden=!visible||!result.room;
     evidence([...new Set(['Google Maps',...result.credits.filter(x=>x!=='Google')])].join(' · '));
