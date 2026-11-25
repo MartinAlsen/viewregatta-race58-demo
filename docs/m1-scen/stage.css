@@ -61,3 +61,7 @@ body:has(#player.expanded){overflow:hidden}
 @media(orientation:landscape) and (max-height:540px){
   #player.expanded:not(.fill-picture) #controls{bottom:var(--view-footer)}
 }
+
+/* Inline video controls are owned by the interactive player. Receive taps on
+   its stage even when WebKit uses a separate native video surface. */
+#player.expanded #film{pointer-events:none}
