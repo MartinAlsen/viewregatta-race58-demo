@@ -20,6 +20,7 @@
   <script>
     const player = new URL('https://martinalsen.github.io/viewregatta-race58-demo/race58-player/');
     player.search = location.search;
+    player.searchParams.set('viewer', '78c3e5421fa9');
     player.hash = location.hash;
     document.querySelector('iframe').src = player.href;
   </script>
