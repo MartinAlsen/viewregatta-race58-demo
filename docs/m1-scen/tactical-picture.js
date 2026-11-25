@@ -1,4 +1,9 @@
 // A muted crop from the programme master can retain small map labels on low-resolution streams.
+export function showSourceDetail(spec, stageWidth, pixelRatio) {
+  // A half-scale broadcast still has enough pixels for a sharper source-camera crop.
+  return Boolean(spec.largeScreenDetail && stageWidth * pixelRatio >= spec.frameSize[0] / 2);
+}
+
 export function setupInsetPicture(film, spec) {
   if (!spec) return () => {};
   const {url, start, end, segmentSec, firstPts = 0, lead = 2, rect, frameSize} = spec;
@@ -56,7 +61,7 @@ export function setupInsetPicture(film, spec) {
   film.addEventListener('pause', () => box.pause());
   window.addEventListener('pagehide', () => { stop(); discard(); });
   return t => {
-    const largePicture = spec.largeScreenDetail && film.clientWidth*devicePixelRatio >= frameSize[0]*.85;
+    const largePicture = showSourceDetail(spec, film.clientWidth, devicePixelRatio);
     if (disabled || document.hidden || !film.videoHeight || (!largePicture && film.videoHeight >= frameSize[1]) ||
         t < start - lead || t >= end) {
       if (activeIndex !== -1 || downloading || clips.size) { stop(); discard(); }

@@ -1,4 +1,4 @@
-import {setupInsetPicture} from './tactical-picture.js?v=413cfe466eaf';
+import {setupInsetPicture} from './tactical-picture.js?v=b6f0c77c0ed5';
 import {setupFilmStream} from './film-stream.js?v=0e9b00d2309a';
 const get=id=>document.getElementById(id);
 const film=get('film'),free=get('free'),back=get('back'),take=get('take');
