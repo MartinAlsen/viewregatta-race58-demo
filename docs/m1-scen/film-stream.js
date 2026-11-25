@@ -1,16 +1,22 @@
 // Use the same media element and clock for the director, audio and free camera.
 export function setupFilmStream(film, quality, notice) {
   if (!film.dataset.hls) return;
-  const {hls: adaptive, hd, original, fallback, hlsModule} = film.dataset;
+  const {hls: adaptive, hd, original, originalHls, fallback, hlsModule} = film.dataset;
   const native = Boolean(film.canPlayType('application/vnd.apple.mpegurl'));
   const saveData = navigator.connection?.saveData === true;
   film.preload = saveData ? 'metadata' : 'auto';
   let engine, generation = 0, pendingTime = null, lastTime = 0, mode = 'auto';
   let recovering = false, intendedPlay = false;
 
+  function selectedLevel(hls) {
+    if (mode === 'auto') return -1;
+    const heights=hls.levels.map(level=>level.height);
+    return mode==='original' ? heights.length-1 : heights.indexOf(Math.max(...heights));
+  }
   function describe() {
     const label = quality.querySelector('option[value="auto"]');
-    label.textContent = mode === 'auto' && film.videoHeight ? 'Auto · ' + film.videoHeight + 'p' : 'Auto';
+    const master = originalHls && engine && engine.currentLevel>=0 && engine.currentLevel===engine.levels.length-1;
+    label.textContent = mode === 'auto' && film.videoHeight ? 'Auto · ' + (master ? 'Original' : film.videoHeight+'p') : 'Auto';
   }
   function nativeSource(url, time, playing) {
     pendingTime = time > 0 ? time : null;
@@ -39,17 +45,16 @@ export function setupFilmStream(film, quality, notice) {
     const playing = !film.paused && !film.ended;
     intendedPlay = playing;
     mode = modeWanted; recovering = false; notice.textContent = '';
-    if (engine && engine.levels.length && (mode === 'auto' || mode === 'hd')) {
-      const heights = engine.levels.map(level => level.height);
-      engine.nextLevel = mode === 'auto' ? -1 : heights.indexOf(Math.max(...heights));
+    if (engine && engine.levels.length && (mode === 'auto' || mode === 'hd' || (mode === 'original' && originalHls))) {
+      engine.nextLevel = selectedLevel(engine);
       describe();
       return;
     }
     engine?.destroy(); engine = null;
     describe();
-    const source = {auto: adaptive, hd, original, mobile: fallback}[mode];
+    const source = {auto: adaptive, hd, original:originalHls || original, mobile: fallback}[mode];
     // WebKit's native HLS honours iPhone playback gestures and power management.
-    if (mode === 'original' || mode === 'mobile' || (native && navigator.vendor === 'Apple Computer, Inc.')) {
+    if ((mode === 'original' && !originalHls) || mode === 'mobile' || (native && navigator.vendor === 'Apple Computer, Inc.')) {
       nativeSource(source, time, playing);
       return;
     }
@@ -73,9 +78,10 @@ export function setupFilmStream(film, quality, notice) {
         if (playing) film.play().catch(() => {});
       });
       current.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (mode === 'hd') current.loadLevel = current.levels.length - 1;
+        if (mode !== 'auto') current.loadLevel = selectedLevel(current);
         if (saveData && (playing || !film.paused || intendedPlay)) current.startLoad(time || 0);
       });
+      current.on(Hls.Events.LEVEL_SWITCHED,describe);
       pendingTime = time || null;
       current.attachMedia(film);
     } catch {
@@ -119,7 +125,7 @@ export function setupFilmStream(film, quality, notice) {
   async function play() {
     // Native WebKit must receive play inside the original user gesture. WebKit
     // then chooses its startup buffer, including when network data saving is on.
-    if ((native && navigator.vendor === 'Apple Computer, Inc.') || ['original','mobile'].includes(mode))
+    if ((native && navigator.vendor === 'Apple Computer, Inc.') || mode==='mobile' || (mode==='original' && !originalHls))
       return film.play();
     const id = ++startRequest, until = performance.now()+3000;
     pending = true;

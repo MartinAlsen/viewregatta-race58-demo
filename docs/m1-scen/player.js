@@ -1,5 +1,5 @@
-import {setupTacticalPicture} from './tactical-picture.js?v=85f5ac638b73';
-import {setupFilmStream} from './film-stream.js?v=ee0f404270df';
+import {setupInsetPicture} from './tactical-picture.js?v=413cfe466eaf';
+import {setupFilmStream} from './film-stream.js?v=0e9b00d2309a';
 const get=id=>document.getElementById(id);
 const film=get('film'),free=get('free'),back=get('back'),take=get('take');
 let canvas=free.querySelector('canvas');
@@ -21,6 +21,10 @@ const cameraStatus=document.createElement('output');
 cameraStatus.id='cameraStatus';cameraStatus.hidden=true;cameraStatus.setAttribute('role','status');
 get('stage').append(cameraStatus);
 let noticeTimer, handoverTimer, controller;
+function extendHandover(){
+  clearTimeout(handoverTimer);
+  if(requested)handoverTimer=setTimeout(()=>stop('Kameraladdningen har stannat. Tryck på Ta över kameran för ett nytt försök.',true),90000);
+}
 function cameraNotice(text,timeout=0){
   clearTimeout(noticeTimer);
   cameraStatus.textContent=text;cameraStatus.hidden=!text;
@@ -49,17 +53,23 @@ function applyInsets(mask){
   canvas.style.clipPath='polygon(evenodd,'+polygon.join(',')+')';
 }
 film.addEventListener('loadedmetadata',()=>{if(Number.isFinite(film.duration))seek.max=film.duration;});
+film.addEventListener('loadedmetadata',()=>{
+  const match=/^#t=(\d+(?:\.\d+)?)$/.exec(location.hash);
+  if(match && Number.isFinite(film.duration))film.currentTime=Math.min(Number(match[1]),film.duration);
+},{once:true});
 const stream = setupFilmStream(film, get('quality'), get('streamStatus'));
-const updateTacticalPicture = setupTacticalPicture(film, JSON.parse(film.dataset.tactics || 'null'));
+const insetSpecs = [JSON.parse(film.dataset.tactics || 'null'), ...JSON.parse(film.dataset.lines || '[]')];
+const insets = insetSpecs.filter(Boolean).map(spec=>setupInsetPicture(film,spec));
+const updateInsets = t => { for(const update of insets) update(t); };
 function load(){
   if(world)return Promise.resolve(world);
   if(loading)return loading;
   const attempt=controller=new AbortController();
-  loading=import('./runtime/world.js?v=51adf8de71d4').then(m=>m.loadWorld(canvas,()=>{
+  loading=import('./runtime/world.js?v=13a986350b90').then(m=>m.loadWorld(canvas,()=>{
     if(controller!==attempt)return;
     world=null;stop('Telefonen avbröt 3D-visningen. Du kan försöka igen.',true);
     const replacement=canvas.cloneNode(false);canvas.replaceWith(replacement);canvas=replacement;previousMask=-1;
-  },programmeUrl,{signal:attempt.signal,progress:text=>{if(requested && !attempt.signal.aborted)cameraNotice(text);}})).then(w=>{
+  },programmeUrl,{signal:attempt.signal,position,progress:text=>{if(requested && !attempt.signal.aborted){extendHandover();cameraNotice(text);}}})).then(w=>{
     if(attempt.signal.aborted)return;
     world=w;
     const targetLabel=focus.options[1]?.textContent||'Aktuellt banmärke';
@@ -79,7 +89,7 @@ async function enter(){
   if(requested){stop();return;}
   const version=++seq;requested=true;take.textContent='Avbryt';revealControls();
   cameraNotice('Laddar fri kamera …');hint.textContent='Förbereder den fria kameran.';
-  handoverTimer=setTimeout(()=>{if(requested&&version===seq)stop('Kameran hann inte laddas. Tryck på Ta över kameran för ett nytt försök.',true);},90000);
+  extendHandover();
   try{await load();if(version===seq&&world?.ready)takeOver();}catch(e){if(version===seq){console.error(e.message);stop('3D-scenen kunde inte laddas. Försök igen.',true);}}
 }
 function adjust(dx,dy,factor=1){
@@ -88,12 +98,18 @@ function adjust(dx,dy,factor=1){
 }
 function tick(now){
   requestAnimationFrame(tick);if(document.hidden)return;
-  const t=position(),sec=Math.floor(clockStart+film.currentTime);seek.value=film.currentTime;updateTacticalPicture(t);
+  const t=position(),sec=Math.floor(clockStart+film.currentTime);seek.value=film.currentTime;updateInsets(t);
   get('time').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
   get('play').textContent=stream?.pending?'Avbryt':film.ended?'Spela igen':film.paused?'Spela':'Pausa';
   if(!world || (!active && !requested) || (!active && now-lastWarm<22))return;
   try{
     const result=world.draw(t,active?pose():{yaw:0,pitch:0,zoom:1,focus:0},now,active);lastWarm=now;
+    if(result.picturePending){
+      canvas.hidden=true;get('credits').hidden=true;get('room').hidden=true;
+      if(cameraStatus.hidden || cameraStatus.textContent!=='Laddar kamerabilden …')cameraNotice('Laddar kamerabilden …');
+      return;
+    }
+    if(active && cameraStatus.textContent==='Laddar kamerabilden …')cameraNotice('');
     applyInsets(result.mask);
     if(!active){if(result.ready&&requested)takeOver();return;}
     visible=moved||Math.abs(t-anchor)>.035;canvas.hidden=!visible;
@@ -112,7 +128,7 @@ function play(){if(stream?.pending){stream.cancel();return;}if(film.paused)(stre
 get('play').onclick=play;film.onclick=()=>{if(!expanded)play();};seek.oninput=()=>{stream?.cancel();film.currentTime=Number(seek.value);};
 film.addEventListener('seeked',()=>{if(film.paused)stamp=film.currentTime;});
 film.addEventListener('ended',()=>{if(active)stop('Rundningen är slut. Du kan spela igen.');if(expanded)revealControls();});
-for(const event of ['timeupdate','seeked','loadeddata'])film.addEventListener(event,()=>updateTacticalPicture(position()));
+for(const event of ['timeupdate','seeked','loadeddata'])film.addEventListener(event,()=>updateInsets(position()));
 const dist=()=>{const a=[...pointers.values()];return a.length===2?Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y):0;};
 free.onpointerdown=e=>{free.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});pinch=dist();};
 free.onpointermove=e=>{

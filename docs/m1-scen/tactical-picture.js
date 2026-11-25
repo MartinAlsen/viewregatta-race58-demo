@@ -1,9 +1,9 @@
 // A muted crop from the programme master can retain small map labels on low-resolution streams.
-export function setupTacticalPicture(film, spec) {
+export function setupInsetPicture(film, spec) {
   if (!spec) return () => {};
   const {url, start, end, segmentSec, firstPts = 0, lead = 2, rect, frameSize} = spec;
   const box = document.createElement('video');
-  box.id = 'tacticalPicture';
+  box.id = spec.id || 'tacticalPicture';
   box.playsInline = box.muted = box.defaultMuted = true;
   box.disablePictureInPicture = true;
   box.setAttribute('aria-hidden','true');
@@ -56,7 +56,8 @@ export function setupTacticalPicture(film, spec) {
   film.addEventListener('pause', () => box.pause());
   window.addEventListener('pagehide', () => { stop(); discard(); });
   return t => {
-    if (disabled || document.hidden || !film.videoHeight || film.videoHeight >= frameSize[1] ||
+    const largePicture = spec.largeScreenDetail && film.clientWidth*devicePixelRatio >= frameSize[0]*.85;
+    if (disabled || document.hidden || !film.videoHeight || (!largePicture && film.videoHeight >= frameSize[1]) ||
         t < start - lead || t >= end) {
       if (activeIndex !== -1 || downloading || clips.size) { stop(); discard(); }
       return;
@@ -70,7 +71,7 @@ export function setupTacticalPicture(film, spec) {
       clips.delete(key); URL.revokeObjectURL(blob);
     }
     // Fetch at most one short map clip ahead, only after the film has a reserve.
-    if (!downloading && (film.paused || bufferedAhead()>=6) && performance.now()>=retryAfter) {
+    if (!downloading && (film.paused || bufferedAhead()>=(spec.minBuffer || 6)) && performance.now()>=retryAfter) {
       if (!clips.has(index)) fetchClip(index);
       else if (target>=segmentSec/2 && start+(index+1)*segmentSec<end && !clips.has(index+1)) fetchClip(index+1);
     }
