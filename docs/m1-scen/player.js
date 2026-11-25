@@ -19,6 +19,7 @@ function stop(message='Du följer filmens regi.'){
   take.disabled=false;world?.follow();pointers.clear();hint.textContent=message;
 }
 const programmeUrl=new URL(document.querySelector('main').dataset.programme,document.baseURI);
+let loadingCity=0;
 let clockStart=Number(document.querySelector('main').dataset.start);
 const maskRects=JSON.parse(document.querySelector('main').dataset.insets);
 let previousMask=-1;
@@ -40,7 +41,7 @@ if(film.dataset.fallback)film.addEventListener('error',()=>{
   if(film.src!==fallback)film.src=fallback;
 });
 function load(){
-  return loading??=import('./runtime/world.js?v=ccaa36185b15').then(m=>m.loadWorld(canvas,()=>{
+  return loading??=import('./runtime/world.js?v=9cf82f4a62e1').then(m=>m.loadWorld(canvas,()=>{
     stop('Telefonen avbröt 3D-visningen. Filmen fortsätter.');world=null;loading=null;
   },programmeUrl)).then(w=>{world=w;
     const targetLabel=focus.options[1]?.textContent||'Aktuellt banmärke';
@@ -54,7 +55,7 @@ function takeOver(){
   hint.textContent='Dra för att vrida. Nyp eller scrolla för att zooma.';
 }
 async function enter(){
-  const version=++seq;requested=true;take.disabled=true;hint.textContent='Laddar båtarna och Stockholm …';
+  const version=++seq;requested=true;loadingCity=0;warmAt=performance.now();take.disabled=true;hint.textContent='Laddar båtarna och Stockholm …';
   try{await load();if(version===seq&&world.ready)takeOver();}catch(e){console.error(e.message,e.stack);if(version===seq)stop('3D-scenen kunde inte laddas. Filmen går att spela.');}
 }
 function adjust(dx,dy,factor=1){
@@ -71,6 +72,8 @@ function tick(now){
   try{
     const result=world.draw(t,active?pose():{yaw:0,pitch:0,zoom:1,focus:0},now,active);lastWarm=now;
     applyInsets(result.mask);
+    if(requested&&result.city>loadingCity){loadingCity=result.city;warmAt=now;}
+
     if(!active){ready=result.ready;if(ready&&requested)takeOver();else if(requested&&now-warmAt>75000){stop('3D-miljön tar för lång tid att ladda. Försök igen.');warmAt=now;}return;}
     visible=moved||Math.abs(t-anchor)>.035;canvas.hidden=!visible;
     get('credits').hidden=!visible;get('room').hidden=!visible||!result.room;
