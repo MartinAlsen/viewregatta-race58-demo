@@ -1,0 +1,22 @@
+{
+  "race": 58,
+  "name": "Race58-regi-tat-footer-1080p.mp4",
+  "player": "https://martinalsen.github.io/viewregatta-race58-demo/",
+  "download": "https://apps-viewregatta-public-race58.storage.googleapis.com/stream-v3/Race58-1080p.mp4",
+  "sha256": "76116ddda6de52f222c4c07c36813c77c0f55f4e72372f874b58563590331da9",
+  "bytes": 1707994283,
+  "seconds": 1060.0,
+  "chapters": 17,
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "frameRate": "25/1",
+    "frames": 26500
+  },
+  "audio": {
+    "codec": "aac",
+    "channels": 1,
+    "tracks": 1
+  }
+}
