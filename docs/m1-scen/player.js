@@ -66,7 +66,7 @@ function load(){
   if(world)return Promise.resolve(world);
   if(loading)return loading;
   const attempt=controller=new AbortController();
-  loading=import('./runtime/world.js?v=235901e6acea').then(m=>m.loadWorld(canvas,()=>{
+  loading=import('./runtime/world.js?v=268336ab47bd').then(m=>m.loadWorld(canvas,()=>{
     if(controller!==attempt)return;
     world=null;stop('Telefonen avbröt 3D-visningen. Du kan försöka igen.',true);
     const replacement=canvas.cloneNode(false);canvas.replaceWith(replacement);canvas=replacement;previousMask=-1;
@@ -152,6 +152,20 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&(active||r
 requestAnimationFrame(tick);
 
 const player=get('player'),screenButton=get('screen'),options=get('options'),cameraOptions=get('cameraOptions');
+// The parent shelf tracks browser chrome on iPhone. Inside an iframe the visual
+// viewport can still represent the full layout viewport during a toolbar change.
+function fitViewport(){
+  const view=window.visualViewport;
+  const w=view && view.scale===1 ? Math.min(innerWidth,view.width) : innerWidth;
+  const h=view && view.scale===1 ? Math.min(innerHeight,view.height) : innerHeight;
+  const fit=Math.min(w,h*16/9),cover=Math.max(w,h*16/9);
+  for(const [key,value] of Object.entries({w,h,fit,cover,footer:(h-fit*9/16)/2+fit/16})) {
+    player.style.setProperty('--view-'+key,value+'px');
+  }
+}
+fitViewport();
+window.addEventListener('resize',fitViewport);
+window.visualViewport?.addEventListener('resize',fitViewport);
 const shortLandscape=matchMedia('(orientation:landscape) and (max-height:540px)');
 const hud=get('controls'), quality=get('quality');
 const fill=document.createElement('button');
@@ -202,13 +216,14 @@ function expand(on,auto=false){
   placeScreenControl();revealControls();
 }
 function canExpandScene(){
-  return typeof player.requestFullscreen==='function' && document.fullscreenEnabled;
+  return Boolean((player.requestFullscreen && document.fullscreenEnabled)
+    || (player.webkitRequestFullscreen && document.webkitFullscreenEnabled));
 }
 function canExpandFilm(){
   return !active && typeof film.webkitEnterFullscreen==='function' && film.readyState>=1;
 }
 function placeScreenControl(){
-  const system=Boolean(document.fullscreenElement || film.webkitDisplayingFullscreen);
+  const system=Boolean(document.fullscreenElement || document.webkitFullscreenElement || film.webkitDisplayingFullscreen);
   const available=canExpandScene() || canExpandFilm();
   const mainButton=expanded && shortLandscape.matches && (system || available);
   const title=system?'Stäng helskärm':available?'Helskärm':expanded?'Stäng storbild':'Storbild';
@@ -221,9 +236,15 @@ function placeScreenControl(){
   else cameraOptions.append(screenButton);
 }
 screenButton.onclick=async()=>{
-  if(document.fullscreenElement){await document.exitFullscreen().catch(()=>{});return;}
+  if(document.fullscreenElement || document.webkitFullscreenElement){
+    const exit=document.exitFullscreen || document.webkitExitFullscreen;
+    await Promise.resolve(exit.call(document)).catch(()=>{});return;
+  }
   if(canExpandScene()){
-    try{await player.requestFullscreen();return;}catch{/* Some iPhones only expose fullscreen for the film. */}
+    try{
+      const request=document.fullscreenEnabled && player.requestFullscreen || player.webkitRequestFullscreen;
+      await request.call(player);return;
+    }catch{/* Some iPhones only expose fullscreen for the film. */}
   }
   if(canExpandFilm()){
     try{film.webkitEnterFullscreen();if(film.paused)film.play().catch(()=>{});return;}catch{/* Keep the inline player available. */}
@@ -233,9 +254,13 @@ screenButton.onclick=async()=>{
   }
   expand(!expanded);
 };
-document.addEventListener('fullscreenchange',()=>{
-  expand(Boolean(document.fullscreenElement)||shortLandscape.matches,!document.fullscreenElement&&shortLandscape.matches);
-});
+function fullscreenLayout(){
+  const system=Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  expand(system||shortLandscape.matches,!system&&shortLandscape.matches);
+  fitViewport();
+}
+document.addEventListener('fullscreenchange',fullscreenLayout);
+document.addEventListener('webkitfullscreenchange',fullscreenLayout);
 film.addEventListener('loadedmetadata',placeScreenControl);
 film.addEventListener('webkitendfullscreen',()=>{placeScreenControl();revealControls();});
 function rotateLayout(){if(shortLandscape.matches)expand(true,true);else if(automatic)expand(false);}

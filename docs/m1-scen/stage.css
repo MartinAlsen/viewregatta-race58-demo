@@ -38,7 +38,7 @@ body:has(#player.expanded){overflow:hidden}
 
 
 #player.expanded{overflow:hidden;grid-template:100% / 100%}
-#player.expanded.fill-picture #stage{width:max(100%,calc(100dvh * 16 / 9));max-width:none;max-height:none;justify-self:center}
+#player.expanded.fill-picture #stage{width:var(--view-cover);height:calc(var(--view-cover) * 9 / 16);max-width:none;max-height:none;justify-self:center}
 #player.expanded #controls{display:flex;align-items:center;flex-wrap:nowrap;gap:8px;
   padding:2px max(10px,env(safe-area-inset-right)) max(2px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
   background:linear-gradient(transparent,rgba(4,15,22,.88) 32%)}
@@ -54,3 +54,10 @@ body:has(#player.expanded){overflow:hidden}
 
 #player.expanded #controls .compact-fullscreen{font-size:0;min-width:44px;padding:0}
 #player.expanded #controls .compact-fullscreen::before{content:'⛶';font:24px/1 system-ui,sans-serif}
+
+/* Use the visible browser rectangle for both axes, including toolbar changes. */
+#player.expanded{width:var(--view-w);height:var(--view-h);min-height:0}
+#player.expanded:not(.fill-picture) #stage{width:var(--view-fit);height:calc(var(--view-fit) * 9 / 16);max-height:none}
+@media(orientation:landscape) and (max-height:540px){
+  #player.expanded:not(.fill-picture) #controls{bottom:var(--view-footer)}
+}

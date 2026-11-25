@@ -12,15 +12,30 @@
   <title>Race 58 · ViewRegatta</title>
   <style>
     html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050b10;color-scheme:dark}
-    iframe{display:block;border:0;width:100%;height:100%;height:100dvh}
+    iframe{display:block;border:0;width:100%;height:100%;height:100dvh;position:absolute;top:0;left:0}
   </style>
 </head>
 <body>
   <iframe title="Race 58 · Interaktiv spelare" allow="autoplay; fullscreen" allowfullscreen></iframe>
   <script>
+    const frame = document.querySelector('iframe');
+    function fitPlayerFrame() {
+      const view = window.visualViewport;
+      if (view && view.scale !== 1) return;
+      const width = view?.width ?? window.innerWidth;
+      const height = view?.height ?? window.innerHeight;
+      frame.style.width = width + 'px';
+      frame.style.height = height + 'px';
+      frame.style.left = (view?.pageLeft ?? 0) + 'px';
+      frame.style.top = (view?.pageTop ?? 0) + 'px';
+    }
+    fitPlayerFrame();
+    window.addEventListener('resize', fitPlayerFrame);
+    window.visualViewport?.addEventListener('resize', fitPlayerFrame);
+    window.visualViewport?.addEventListener('scroll', fitPlayerFrame);
     const player = new URL('https://martinalsen.github.io/viewregatta-race58-demo/race58-player/');
     player.search = location.search;
-    player.searchParams.set('viewer', 'a9589241410a');
+    player.searchParams.set('viewer', '661e8f055893');
     player.hash = location.hash;
     document.querySelector('iframe').src = player.href;
   </script>

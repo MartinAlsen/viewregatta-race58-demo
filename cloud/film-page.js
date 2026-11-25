@@ -1,6 +1,6 @@
 import {setupFilmStream} from './assets-v1/m1-scen/film-stream.js?v=8e28416acbb9';
 const film=document.querySelector('video'),quality=document.querySelector('#rendition');
-Object.assign(film.dataset,{hls:'stream-v3/master.m3u8',hd:'stream-v3/1080p/film.m3u8',originalHls:'stream-v3/original/film.m3u8',backupHls:'https://martinalsen.github.io/viewregatta-race58-demo/watch/race58-hd.m3u8',backupHd:'https://martinalsen.github.io/viewregatta-race58-demo/watch/1080p/film.m3u8',original:document.querySelector('#original-film').href,fallback:'stream-v3/mobile.mp4',hlsModule:'assets-v1/m1-scen/vendor/hls-light-1.7.4.mjs'});
+Object.assign(film.dataset,{hls:'stream-v4/master.m3u8',hd:'stream-v4/1080p/film.m3u8',originalHls:'stream-v4/original/film.m3u8',backupHls:'https://martinalsen.github.io/viewregatta-race58-demo/watch/race58-hd.m3u8',backupHd:'https://martinalsen.github.io/viewregatta-race58-demo/watch/1080p/film.m3u8',original:document.querySelector('#original-film').href,fallback:'stream-v4/mobile.mp4',hlsModule:'assets-v1/m1-scen/vendor/hls-light-1.7.4.mjs'});
 quality.add(new Option('360p','mobile'));quality.value='auto';document.querySelector('#quality').hidden=false;
 setupFilmStream(film,quality,document.querySelector('#notice'));let initial=true;
 function chapter(){ const match=/^#t=(\d+(?:\.\d+)?)$/.exec(location.hash);if(match&&Number.isFinite(film.duration))film.currentTime=Math.min(+match[1],film.duration); }
