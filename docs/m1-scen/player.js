@@ -40,7 +40,7 @@ if(film.dataset.fallback)film.addEventListener('error',()=>{
   if(film.src!==fallback)film.src=fallback;
 });
 function load(){
-  return loading??=import('./runtime/world.js?v=34638303f0af').then(m=>m.loadWorld(canvas,()=>{
+  return loading??=import('./runtime/world.js?v=ccaa36185b15').then(m=>m.loadWorld(canvas,()=>{
     stop('Telefonen avbröt 3D-visningen. Filmen fortsätter.');world=null;loading=null;
   },programmeUrl)).then(w=>{world=w;
     const targetLabel=focus.options[1]?.textContent||'Aktuellt banmärke';
@@ -58,7 +58,8 @@ async function enter(){
   try{await load();if(version===seq&&world.ready)takeOver();}catch(e){console.error(e.message,e.stack);if(version===seq)stop('3D-scenen kunde inte laddas. Filmen går att spela.');}
 }
 function adjust(dx,dy,factor=1){
-  if(!active)return;yaw=(yaw+dx+3*Math.PI)%(2*Math.PI)-Math.PI;pitch=limit(pitch+dy,-1.4,.48);zoom=limit(zoom*factor,.19,2.9);moved=true;
+  if(!active)return;yaw=(yaw+dx+3*Math.PI)%(2*Math.PI)-Math.PI;pitch=limit(pitch+dy,-1.4,.48);const minimum=world.minimumZoom(Number(focus.value));
+  zoom=limit(Math.max(zoom,minimum)*factor,minimum,2.9);moved=true;
 }
 function tick(now){
   requestAnimationFrame(tick);if(document.hidden)return;
