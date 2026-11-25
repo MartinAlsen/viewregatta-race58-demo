@@ -65,7 +65,7 @@ function load(){
   if(world)return Promise.resolve(world);
   if(loading)return loading;
   const attempt=controller=new AbortController();
-  loading=import('./runtime/world.js?v=13a986350b90').then(m=>m.loadWorld(canvas,()=>{
+  loading=import('./runtime/world.js?v=235901e6acea').then(m=>m.loadWorld(canvas,()=>{
     if(controller!==attempt)return;
     world=null;stop('Telefonen avbröt 3D-visningen. Du kan försöka igen.',true);
     const replacement=canvas.cloneNode(false);canvas.replaceWith(replacement);canvas=replacement;previousMask=-1;
