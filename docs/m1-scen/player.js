@@ -1,5 +1,5 @@
 import {setupInsetPicture} from './tactical-picture.js?v=b6f0c77c0ed5';
-import {setupFilmStream} from './film-stream.js?v=0e9b00d2309a';
+import {setupFilmStream} from './film-stream.js?v=8e28416acbb9';
 const get=id=>document.getElementById(id);
 const film=get('film'),free=get('free'),back=get('back'),take=get('take');
 let canvas=free.querySelector('canvas');
@@ -16,6 +16,7 @@ function evidence(text){if(get('credits').textContent!==text)get('credits').text
 function controls(on){
   take.hidden=on;free.hidden=!on;get('options').hidden=!on&&!expanded;showOptions(on&&!expanded&&innerWidth>=760);
   for(const el of [back,get('focusLabel'),get('closer'),get('wider')])el.hidden=!on;
+  placeScreenControl();
 }
 const cameraStatus=document.createElement('output');
 cameraStatus.id='cameraStatus';cameraStatus.hidden=true;cameraStatus.setAttribute('role','status');
@@ -198,18 +199,45 @@ function expand(on,auto=false){
   options.hidden=!on&&!active;
   options.textContent=on?'Val':'Kameraval';
   showOptions(!on&&active&&innerWidth>=760);
-  screenButton.textContent=on?'Stäng helskärm':'Helskärm';
-  screenButton.setAttribute('aria-pressed',String(on));revealControls();
+  placeScreenControl();revealControls();
+}
+function canExpandScene(){
+  return typeof player.requestFullscreen==='function' && document.fullscreenEnabled;
+}
+function canExpandFilm(){
+  return !active && typeof film.webkitEnterFullscreen==='function' && film.readyState>=1;
+}
+function placeScreenControl(){
+  const system=Boolean(document.fullscreenElement || film.webkitDisplayingFullscreen);
+  const available=canExpandScene() || canExpandFilm();
+  const mainButton=expanded && shortLandscape.matches && (system || available);
+  const title=system?'Stäng helskärm':available?'Helskärm':expanded?'Stäng storbild':'Storbild';
+  screenButton.textContent=title;
+  screenButton.title=!system && !canExpandScene() && canExpandFilm()?'Visa filmens regi i helskärm':title;
+  screenButton.setAttribute('aria-label',screenButton.title);
+  screenButton.setAttribute('aria-pressed',String(system || (!available && expanded)));
+  screenButton.classList.toggle('compact-fullscreen',mainButton);
+  if(!expanded || mainButton) primary.insertBefore(screenButton,options);
+  else cameraOptions.append(screenButton);
 }
 screenButton.onclick=async()=>{
-  if(expanded){
-    if(document.fullscreenElement)await document.exitFullscreen().catch(()=>{});
-    expand(false);return;
+  if(document.fullscreenElement){await document.exitFullscreen().catch(()=>{});return;}
+  if(canExpandScene()){
+    try{await player.requestFullscreen();return;}catch{/* Some iPhones only expose fullscreen for the film. */}
   }
-  expand(true);
-  if(player.requestFullscreen)await player.requestFullscreen().catch(()=>{});
+  if(canExpandFilm()){
+    try{film.webkitEnterFullscreen();if(film.paused)film.play().catch(()=>{});return;}catch{/* Keep the inline player available. */}
+  }
+  if(expanded && (canExpandScene()||canExpandFilm())){
+    cameraNotice('Helskärm kunde inte öppnas i den här webbläsaren.',3000);return;
+  }
+  expand(!expanded);
 };
-document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)expand(false);});
+document.addEventListener('fullscreenchange',()=>{
+  expand(Boolean(document.fullscreenElement)||shortLandscape.matches,!document.fullscreenElement&&shortLandscape.matches);
+});
+film.addEventListener('loadedmetadata',placeScreenControl);
+film.addEventListener('webkitendfullscreen',()=>{placeScreenControl();revealControls();});
 function rotateLayout(){if(shortLandscape.matches)expand(true,true);else if(automatic)expand(false);}
 fill.hidden=true;
 shortLandscape.addEventListener('change',rotateLayout);rotateLayout();
