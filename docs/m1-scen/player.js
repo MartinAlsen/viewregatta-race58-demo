@@ -1,3 +1,5 @@
+import {setupTacticalPicture} from './tactical-picture.js?v=85f5ac638b73';
+import {setupFilmStream} from './film-stream.js?v=ee0f404270df';
 const get=id=>document.getElementById(id);
 const film=get('film'),free=get('free'),canvas=free.querySelector('canvas'),back=get('back'),take=get('take');
 const focus=get('focus'),hint=get('hint'),seek=get('seek'),pointers=new Map(),limit=(x,a,b)=>Math.max(a,Math.min(b,x));
@@ -35,11 +37,8 @@ function applyInsets(mask){
   canvas.style.clipPath='polygon(evenodd,'+polygon.join(',')+')';
 }
 film.addEventListener('loadedmetadata',()=>{if(Number.isFinite(film.duration))seek.max=film.duration;});
-if(film.dataset.hls&&film.canPlayType('application/vnd.apple.mpegurl'))film.src=film.dataset.hls;
-if(film.dataset.fallback)film.addEventListener('error',()=>{
-  const fallback=new URL(film.dataset.fallback,document.baseURI).href;
-  if(film.src!==fallback)film.src=fallback;
-});
+const stream = setupFilmStream(film, get('quality'), get('streamStatus'));
+const updateTacticalPicture = setupTacticalPicture(film, JSON.parse(film.dataset.tactics || 'null'));
 function load(){
   return loading??=import('./runtime/world.js?v=32e830e16ff4').then(m=>m.loadWorld(canvas,()=>{
     stop('Telefonen avbröt 3D-visningen. Filmen fortsätter.');world=null;loading=null;
@@ -64,11 +63,10 @@ function adjust(dx,dy,factor=1){
 }
 function tick(now){
   requestAnimationFrame(tick);if(document.hidden)return;
-  const t=position(),sec=Math.floor(clockStart+film.currentTime);seek.value=film.currentTime;
+  const t=position(),sec=Math.floor(clockStart+film.currentTime);seek.value=film.currentTime;updateTacticalPicture(t);
   get('time').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
-  get('play').textContent=film.ended?'Spela igen':film.paused?'Spela':'Pausa';
-  if(!world || (!active&&now-lastWarm<(ready?200:22)))return;
-  if(!active&&!requested&&ready&&film.paused&&now-warmAt>45000)return;
+  get('play').textContent=stream?.pending?'Avbryt':film.ended?'Spela igen':film.paused?'Spela':'Pausa';
+  if(!world || (!active && !requested) || (!active && now-lastWarm<22))return;
   try{
     const result=world.draw(t,active?pose():{yaw:0,pitch:0,zoom:1,focus:0},now,active);lastWarm=now;
     applyInsets(result.mask);
@@ -87,14 +85,10 @@ function tick(now){
 }
 take.onclick=enter;back.onclick=()=>{stop();take.focus({preventScroll:true});};
 focus.onchange=()=>{moved=true;};
-function play(){if(film.paused)film.play().catch(()=>{hint.textContent='Tryck på Spela för att starta.';});else film.pause();}
-get('play').onclick=play;film.onclick=()=>{if(!expanded)play();};seek.oninput=()=>{film.currentTime=Number(seek.value);};
+function play(){if(stream?.pending){stream.cancel();return;}if(film.paused)(stream ? stream.play() : film.play()).catch(()=>{hint.textContent='Tryck på Spela för att starta.';});else film.pause();}
+get('play').onclick=play;film.onclick=()=>{if(!expanded)play();};seek.oninput=()=>{stream?.cancel();film.currentTime=Number(seek.value);};
 film.addEventListener('seeked',()=>{if(film.paused)stamp=film.currentTime;});
 film.addEventListener('ended',()=>{if(active)stop('Rundningen är slut. Du kan spela igen.');if(expanded)revealControls();});
-function prewarm(){if(!document.hidden&&!navigator.connection?.saveData)load().catch(()=>{});}
-film.addEventListener('loadedmetadata',prewarm,{once:true});
-film.addEventListener('playing',prewarm,{once:true});
-if(film.readyState>=1)prewarm();
 film.addEventListener('seeked',()=>{warmAt=performance.now();});
 const dist=()=>{const a=[...pointers.values()];return a.length===2?Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y):0;};
 free.onpointerdown=e=>{free.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});pinch=dist();};
