@@ -33,3 +33,5 @@ body:has(#player.expanded){overflow:hidden}
  #player.expanded #controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
  #player.expanded #transport{flex:1;min-width:180px}#controls #cameraOptions{flex-basis:100%}
 }
+
+#cameraStatus{position:absolute;z-index:3;top:5%;left:50%;transform:translateX(-50%);max-width:90%;width:max-content;padding:.45em .8em;border-radius:5px;background:rgb(8 27 39 / 92%);color:#fff;text-align:center;font:600 clamp(.82rem,2vw,1rem) system-ui;pointer-events:none}

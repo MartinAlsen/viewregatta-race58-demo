@@ -1,10 +1,11 @@
 import {setupTacticalPicture} from './tactical-picture.js?v=85f5ac638b73';
 import {setupFilmStream} from './film-stream.js?v=ee0f404270df';
 const get=id=>document.getElementById(id);
-const film=get('film'),free=get('free'),canvas=free.querySelector('canvas'),back=get('back'),take=get('take');
+const film=get('film'),free=get('free'),back=get('back'),take=get('take');
+let canvas=free.querySelector('canvas');
 const focus=get('focus'),hint=get('hint'),seek=get('seek'),pointers=new Map(),limit=(x,a,b)=>Math.max(a,Math.min(b,x));
-let world,loading,active=false,requested=false,ready=false,visible=false,moved=false,anchor=0,elapsed=0,frames=0,previous=0,pinch=0;
-let yaw=0,pitch=0,zoom=1,stamp=0,hasStamp=false,seq=0,lastWarm=0,warmAt=0;
+let world,loading,active=false,requested=false,visible=false,moved=false,anchor=0,elapsed=0,frames=0,previous=0,pinch=0;
+let yaw=0,pitch=0,zoom=1,stamp=0,hasStamp=false,seq=0,lastWarm=0;
 function clock(_,m){stamp=m.mediaTime;hasStamp=true;film.requestVideoFrameCallback(clock);}
 if(film.requestVideoFrameCallback)film.requestVideoFrameCallback(clock);
 film.addEventListener('seeking',()=>{hasStamp=false;});
@@ -16,12 +17,23 @@ function controls(on){
   take.hidden=on;free.hidden=!on;get('options').hidden=!on;showOptions(on&&!expanded&&innerWidth>=760);
   for(const el of [back,get('focusLabel'),get('closer'),get('wider')])el.hidden=!on;
 }
-function stop(message='Du följer filmens regi.'){
+const cameraStatus=document.createElement('output');
+cameraStatus.id='cameraStatus';cameraStatus.hidden=true;cameraStatus.setAttribute('role','status');
+get('stage').append(cameraStatus);
+let noticeTimer, handoverTimer, controller;
+function cameraNotice(text,timeout=0){
+  clearTimeout(noticeTimer);
+  cameraStatus.textContent=text;cameraStatus.hidden=!text;
+  if(timeout)noticeTimer=setTimeout(()=>{cameraStatus.hidden=true;},timeout);
+}
+function stop(message='Du följer filmens regi.',showReason=false){
+  clearTimeout(handoverTimer);cameraNotice(showReason ? message : '',showReason ? 12000 : 0);
+  if(!world && controller){controller.abort();controller=null;loading=null;}
   requested=active=visible=false;seq++;controls(false);canvas.hidden=true;get('credits').hidden=true;get('room').hidden=true;get('rate').hidden=true;
-  take.disabled=false;world?.follow();pointers.clear();hint.textContent=message;
+  take.textContent='Ta över kameran';take.disabled=false;world?.follow();pointers.clear();hint.textContent=message;
 }
 const programmeUrl=new URL(document.querySelector('main').dataset.programme,document.baseURI);
-let loadingCity=0;
+
 let clockStart=Number(document.querySelector('main').dataset.start);
 const maskRects=JSON.parse(document.querySelector('main').dataset.insets);
 let previousMask=-1;
@@ -40,22 +52,35 @@ film.addEventListener('loadedmetadata',()=>{if(Number.isFinite(film.duration))se
 const stream = setupFilmStream(film, get('quality'), get('streamStatus'));
 const updateTacticalPicture = setupTacticalPicture(film, JSON.parse(film.dataset.tactics || 'null'));
 function load(){
-  return loading??=import('./runtime/world.js?v=32e830e16ff4').then(m=>m.loadWorld(canvas,()=>{
-    stop('Telefonen avbröt 3D-visningen. Filmen fortsätter.');world=null;loading=null;
-  },programmeUrl)).then(w=>{world=w;
+  if(world)return Promise.resolve(world);
+  if(loading)return loading;
+  const attempt=controller=new AbortController();
+  loading=import('./runtime/world.js?v=51adf8de71d4').then(m=>m.loadWorld(canvas,()=>{
+    if(controller!==attempt)return;
+    world=null;stop('Telefonen avbröt 3D-visningen. Du kan försöka igen.',true);
+    const replacement=canvas.cloneNode(false);canvas.replaceWith(replacement);canvas=replacement;previousMask=-1;
+  },programmeUrl,{signal:attempt.signal,progress:text=>{if(requested && !attempt.signal.aborted)cameraNotice(text);}})).then(w=>{
+    if(attempt.signal.aborted)return;
+    world=w;
     const targetLabel=focus.options[1]?.textContent||'Aktuellt banmärke';
     focus.replaceChildren(new Option('Regins blickpunkt','0'),new Option(targetLabel,String(w.boats.length+1)),
       ...w.boats.map((boat,i)=>new Option(boat.label,String(i+1))));
-    warmAt=performance.now();}).catch(e=>{loading=null;throw e;});
+    return w;
+  }).catch(e=>{if(controller===attempt)loading=null;throw e;});
+  return loading;
 }
 function takeOver(){
-  requested=false;active=true;ready=true;anchor=position();yaw=pitch=0;zoom=1;moved=false;focus.value='0';world.start(anchor);
+  clearTimeout(handoverTimer);cameraNotice('Fri kamera · dra för att vrida',3300);
+  revealControls();requested=false;active=true;anchor=position();yaw=pitch=0;zoom=1;moved=false;focus.value='0';world.start(anchor);
   elapsed=frames=previous=0;controls(true);take.disabled=false;free.focus({preventScroll:true});
   hint.textContent='Dra för att vrida. Nyp eller scrolla för att zooma.';
 }
 async function enter(){
-  const version=++seq;requested=true;loadingCity=0;warmAt=performance.now();take.disabled=true;hint.textContent='Laddar båtarna och Stockholm …';
-  try{await load();if(version===seq&&world.ready)takeOver();}catch(e){console.error(e.message,e.stack);if(version===seq)stop('3D-scenen kunde inte laddas. Filmen går att spela.');}
+  if(requested){stop();return;}
+  const version=++seq;requested=true;take.textContent='Avbryt';revealControls();
+  cameraNotice('Laddar fri kamera …');hint.textContent='Förbereder den fria kameran.';
+  handoverTimer=setTimeout(()=>{if(requested&&version===seq)stop('Kameran hann inte laddas. Tryck på Ta över kameran för ett nytt försök.',true);},90000);
+  try{await load();if(version===seq&&world?.ready)takeOver();}catch(e){if(version===seq){console.error(e.message);stop('3D-scenen kunde inte laddas. Försök igen.',true);}}
 }
 function adjust(dx,dy,factor=1){
   if(!active)return;yaw=(yaw+dx+3*Math.PI)%(2*Math.PI)-Math.PI;pitch=limit(pitch+dy,-1.4,.48);const minimum=world.minimumZoom(Number(focus.value));
@@ -70,9 +95,7 @@ function tick(now){
   try{
     const result=world.draw(t,active?pose():{yaw:0,pitch:0,zoom:1,focus:0},now,active);lastWarm=now;
     applyInsets(result.mask);
-    if(requested&&result.city>loadingCity){loadingCity=result.city;warmAt=now;}
-
-    if(!active){ready=result.ready;if(ready&&requested)takeOver();else if(requested&&now-warmAt>75000){stop('3D-miljön tar för lång tid att ladda. Försök igen.');warmAt=now;}return;}
+    if(!active){if(result.ready&&requested)takeOver();return;}
     visible=moved||Math.abs(t-anchor)>.035;canvas.hidden=!visible;
     get('credits').hidden=!visible;get('room').hidden=!visible||!result.room;
     evidence([...new Set(['Google Maps',...result.credits.filter(x=>x!=='Google')])].join(' · '));
@@ -81,7 +104,7 @@ function tick(now){
       previous=now;
       if(elapsed>=1500){get('rate').hidden=false;get('rate').textContent=Math.round(1000*frames/elapsed)+' bilder/s';elapsed=frames=0;}
     }
-  }catch(e){console.error(e.message,e.stack);stop('3D-vyn avbröts. Du följer filmens regi.');world=null;loading=null;}
+  }catch(e){console.error(e.message,e.stack);world=null;stop('3D-vyn avbröts. Du kan försöka igen.',true);}
 }
 take.onclick=enter;back.onclick=()=>{stop();take.focus({preventScroll:true});};
 focus.onchange=()=>{moved=true;};
@@ -89,7 +112,7 @@ function play(){if(stream?.pending){stream.cancel();return;}if(film.paused)(stre
 get('play').onclick=play;film.onclick=()=>{if(!expanded)play();};seek.oninput=()=>{stream?.cancel();film.currentTime=Number(seek.value);};
 film.addEventListener('seeked',()=>{if(film.paused)stamp=film.currentTime;});
 film.addEventListener('ended',()=>{if(active)stop('Rundningen är slut. Du kan spela igen.');if(expanded)revealControls();});
-film.addEventListener('seeked',()=>{warmAt=performance.now();});
+for(const event of ['timeupdate','seeked','loadeddata'])film.addEventListener(event,()=>updateTacticalPicture(position()));
 const dist=()=>{const a=[...pointers.values()];return a.length===2?Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y):0;};
 free.onpointerdown=e=>{free.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});pinch=dist();};
 free.onpointermove=e=>{
@@ -108,7 +131,7 @@ document.addEventListener('keydown',e=>{
   if(steps[e.key]){e.preventDefault();adjust(...steps[e.key]);}
 });
 window.addEventListener('pagehide',()=>stop());
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&active)stop();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&(active||requested))stop();});
 requestAnimationFrame(tick);
 
 const player=get('player'),screenButton=get('screen'),options=get('options'),cameraOptions=get('cameraOptions');
@@ -121,7 +144,7 @@ function showOptions(show){
 function revealControls(){
   player.classList.remove('hud-hidden');clearTimeout(hideTimer);
   if(expanded && cameraOptions.hidden)hideTimer=setTimeout(()=>{
-    if(!player.matches(':has(#controls :focus-visible)'))player.classList.add('hud-hidden');
+    if(!requested && !player.matches(':has(#controls :focus-visible)'))player.classList.add('hud-hidden');
   },3200);
 }
 function expand(on,auto=false){
