@@ -14,7 +14,7 @@ const pose=()=>({yaw,pitch,zoom,moved,focus:Number(focus.value)});
 film.controls=false;get('transport').hidden=false;
 function evidence(text){if(get('credits').textContent!==text)get('credits').textContent=text;}
 function controls(on){
-  take.hidden=on;free.hidden=!on;get('options').hidden=!on;showOptions(on&&!expanded&&innerWidth>=760);
+  take.hidden=on;free.hidden=!on;get('options').hidden=!on&&!expanded;showOptions(on&&!expanded&&innerWidth>=760);
   for(const el of [back,get('focusLabel'),get('closer'),get('wider')])el.hidden=!on;
 }
 const cameraStatus=document.createElement('output');
@@ -81,7 +81,7 @@ function load(){
 }
 function takeOver(){
   clearTimeout(handoverTimer);cameraNotice('Fri kamera · dra för att vrida',3300);
-  revealControls();requested=false;active=true;anchor=position();yaw=pitch=0;zoom=1;moved=false;focus.value='0';world.start(anchor);
+  requested=false;revealControls();active=true;anchor=position();yaw=pitch=0;zoom=1;moved=false;focus.value='0';world.start(anchor);
   elapsed=frames=previous=0;controls(true);take.disabled=false;free.focus({preventScroll:true});
   hint.textContent='Dra för att vrida. Nyp eller scrolla för att zooma.';
 }
@@ -123,7 +123,7 @@ function tick(now){
   }catch(e){console.error(e.message,e.stack);world=null;stop('3D-vyn avbröts. Du kan försöka igen.',true);}
 }
 take.onclick=enter;back.onclick=()=>{stop();take.focus({preventScroll:true});};
-focus.onchange=()=>{moved=true;};
+focus.onchange=()=>{moved=true;if(expanded)hideControls();};
 function play(){if(stream?.pending){stream.cancel();return;}if(film.paused)(stream ? stream.play() : film.play()).catch(()=>{hint.textContent='Tryck på Spela för att starta.';});else film.pause();}
 get('play').onclick=play;film.onclick=()=>{if(!expanded)play();};seek.oninput=()=>{stream?.cancel();film.currentTime=Number(seek.value);};
 film.addEventListener('seeked',()=>{if(film.paused)stamp=film.currentTime;});
@@ -152,20 +152,52 @@ requestAnimationFrame(tick);
 
 const player=get('player'),screenButton=get('screen'),options=get('options'),cameraOptions=get('cameraOptions');
 const shortLandscape=matchMedia('(orientation:landscape) and (max-height:540px)');
-let hideTimer,expanded=false,automatic=false,downAt=null;
+const hud=get('controls'), quality=get('quality');
+const fill=document.createElement('button');
+fill.id='fillPicture';fill.type='button';fill.textContent='Fyll skärmen';
+fill.setAttribute('aria-pressed','false');
+fill.title='Fyll hela skärmen genom att beskära bildens kanter';
+cameraOptions.append(fill);
+const primary=options.parentElement;
+let hideTimer,expanded=false,automatic=false,downAt=null,keyboard=false,holding=false;
 function showOptions(show){
   cameraOptions.hidden=!show;
   options.setAttribute('aria-expanded',String(show));
 }
+function hideControls(){
+  if(!expanded)return;
+  clearTimeout(hideTimer);
+  showOptions(false);
+  player.classList.add('hud-hidden');
+}
 function revealControls(){
-  player.classList.remove('hud-hidden');clearTimeout(hideTimer);
-  if(expanded && cameraOptions.hidden)hideTimer=setTimeout(()=>{
-    if(!requested && !player.matches(':has(#controls :focus-visible)'))player.classList.add('hud-hidden');
+  player.classList.remove('hud-hidden');
+  clearTimeout(hideTimer);
+  if(expanded && !film.paused && !requested && !holding)hideTimer=setTimeout(()=>{
+    if(!keyboard || !hud.contains(document.activeElement))hideControls();
   },3200);
 }
+function setFill(on){
+  player.classList.toggle('fill-picture',on);
+  fill.setAttribute('aria-pressed',String(on));
+  fill.textContent=on?'Visa hela bilden':'Fyll skärmen';
+}
+fill.onclick=()=>{setFill(!player.classList.contains('fill-picture'));hideControls();};
 function expand(on,auto=false){
   expanded=on;automatic=on&&auto;
   player.classList.toggle('expanded',on);
+  if(on){
+    if(quality)cameraOptions.append(quality);
+    cameraOptions.append(screenButton);
+  }else{
+    if(quality)primary.insertBefore(quality,options);
+    primary.insertBefore(screenButton,options);
+    setFill(false);
+  }
+  fill.hidden=!on;
+  options.hidden=!on&&!active;
+  options.textContent=on?'Val':'Kameraval';
+  showOptions(!on&&active&&innerWidth>=760);
   screenButton.textContent=on?'Stäng helskärm':'Helskärm';
   screenButton.setAttribute('aria-pressed',String(on));revealControls();
 }
@@ -179,21 +211,38 @@ screenButton.onclick=async()=>{
 };
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)expand(false);});
 function rotateLayout(){if(shortLandscape.matches)expand(true,true);else if(automatic)expand(false);}
+fill.hidden=true;
 shortLandscape.addEventListener('change',rotateLayout);rotateLayout();
 options.onclick=()=>{showOptions(cameraOptions.hidden);revealControls();};
+film.addEventListener('playing',revealControls);
+film.addEventListener('pause',revealControls);
+hud.addEventListener('change',()=>{if(expanded&&!cameraOptions.hidden)hideControls();});
 const stage=get('stage');
 stage.tabIndex=0;stage.setAttribute('aria-label','Bildyta. Tryck för att visa eller dölja kontroller i helskärm.');
 stage.addEventListener('pointerdown',e=>{
   downAt=e.isPrimary?{x:e.clientX,y:e.clientY}:null;
 });
+stage.addEventListener('pointermove',e=>{
+  if(downAt && Math.hypot(e.clientX-downAt.x,e.clientY-downAt.y)>=5)downAt=null;
+});
+stage.addEventListener('pointercancel',()=>{downAt=null;});
 stage.addEventListener('pointerup',e=>{
   if(expanded && downAt && e.isPrimary && Math.hypot(e.clientX-downAt.x,e.clientY-downAt.y)<5){
     if(player.classList.contains('hud-hidden'))revealControls();
-    else {clearTimeout(hideTimer);player.classList.add('hud-hidden');}
+    else hideControls();
   }
   downAt=null;
 });
 stage.addEventListener('keydown',e=>{if(expanded && ['Enter',' '].includes(e.key)){e.preventDefault();revealControls();}});
-player.addEventListener('focusin',revealControls);
-get('controls').addEventListener('pointerdown',revealControls);
+player.addEventListener('focusin',()=>{if(keyboard)revealControls();});
+document.addEventListener('pointerdown',()=>{keyboard=false;},true);
+document.addEventListener('keydown',()=>{keyboard=true;},true);
+hud.addEventListener('pointerdown',()=>{holding=true;revealControls();});
+function releaseControl(){
+  if(!holding)return;
+  holding=false;revealControls();
+}
+window.addEventListener('pointerup',releaseControl);
+window.addEventListener('pointercancel',releaseControl);
+hud.addEventListener('focusout',()=>{if(keyboard)revealControls();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&expanded){expand(false);}});

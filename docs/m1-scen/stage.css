@@ -35,3 +35,19 @@ body:has(#player.expanded){overflow:hidden}
 }
 
 #cameraStatus{position:absolute;z-index:3;top:5%;left:50%;transform:translateX(-50%);max-width:90%;width:max-content;padding:.45em .8em;border-radius:5px;background:rgb(8 27 39 / 92%);color:#fff;text-align:center;font:600 clamp(.82rem,2vw,1rem) system-ui;pointer-events:none}
+
+
+#player.expanded{overflow:hidden;grid-template:100% / 100%}
+#player.expanded.fill-picture #stage{width:max(100%,calc(100dvh * 16 / 9));max-width:none;max-height:none;justify-self:center}
+#player.expanded #controls{display:flex;align-items:center;flex-wrap:nowrap;gap:8px;
+  padding:2px max(10px,env(safe-area-inset-right)) max(2px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
+  background:linear-gradient(transparent,rgba(4,15,22,.88) 32%)}
+#player.expanded #transport{display:flex;flex:1;min-width:0;width:auto;margin:0;gap:6px}
+#player.expanded #controls>.modes{flex-wrap:nowrap;margin:0}
+#player.expanded #controls button,#player.expanded #controls select{min-height:44px;font-size:.875rem;white-space:nowrap}
+#player.expanded #controls #cameraOptions{position:absolute;right:max(8px,env(safe-area-inset-right));bottom:100%;
+  max-width:calc(100% - 16px);max-height:68dvh;overflow:auto;display:flex;flex-wrap:wrap;gap:6px;
+  padding:6px;background:#091b26f5;border-radius:8px}
+#player.expanded #rate,#player.expanded #streamStatus:empty{display:none}
+#player.expanded #streamStatus:not(:empty){position:absolute;left:50%;bottom:100%;transform:translateX(-50%);background:#091b26}
+#player.expanded #transport input{min-width:12px}
