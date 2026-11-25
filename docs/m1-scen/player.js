@@ -41,7 +41,7 @@ if(film.dataset.fallback)film.addEventListener('error',()=>{
   if(film.src!==fallback)film.src=fallback;
 });
 function load(){
-  return loading??=import('./runtime/world.js?v=9cf82f4a62e1').then(m=>m.loadWorld(canvas,()=>{
+  return loading??=import('./runtime/world.js?v=32e830e16ff4').then(m=>m.loadWorld(canvas,()=>{
     stop('Telefonen avbröt 3D-visningen. Filmen fortsätter.');world=null;loading=null;
   },programmeUrl)).then(w=>{world=w;
     const targetLabel=focus.options[1]?.textContent||'Aktuellt banmärke';
