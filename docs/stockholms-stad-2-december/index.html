@@ -18,6 +18,7 @@ select{font:inherit;color:inherit;background:#152b38;border:1px solid #607380;bo
   const auto = video.querySelector('source').src;
   const mp4 = video.querySelector('source[type="video/mp4"]').src;
   const original = document.querySelector('a[download]').href;
+  const originalStream = new URL('original-v6.m3u8', document.baseURI).href;
   const pinnedHD = new URL('1080/index.m3u8', auto).href;
   const hls = Boolean(video.canPlayType('application/vnd.apple.mpegurl'));
   const desktop = matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -46,7 +47,7 @@ select{font:inherit;color:inherit;background:#152b38;border:1px solid #607380;bo
     lastTime = resumeTime;
     playRequested = !video.paused && !video.ended;
     alternatives = select.value === 'best'
-      ? [original, ...(hls ? [pinnedHD, auto] : []), mp4]
+      ? [...(hls ? [originalStream] : []), original, ...(hls ? [pinnedHD, auto] : []), mp4]
       : [...(hls ? [auto] : []), mp4];
     loadNext();
   }
